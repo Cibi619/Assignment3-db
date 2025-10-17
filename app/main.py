@@ -5,7 +5,6 @@ import os
 import time
 from mysql.connector import Error
 
-
 app = Flask(__name__)
 
 db_config = {
@@ -20,55 +19,93 @@ db_config = {
 def index():
     return redirect(url_for('search'))
 
-
 @app.route('/', methods=['GET', 'POST'])
 def search():
-    connection = mysql.connector.connect(**db_config)
-    cursor = connection.cursor(dictionary=True)
+    try:
+        connection = mysql.connector.connect(**db_config)
+        cursor = connection.cursor(dictionary=True)
 
-    page = int(request.args.get('page', 1))
-    per_page = 20
-    offset = (page - 1) * per_page
+        page = int(request.args.get('page', 1))
+        per_page = 20
+        offset = (page - 1) * per_page
 
-    start_date = request.args.get('start_date', '2023-12-01')
-    end_date = request.args.get('end_date', '2023-12-31')
-    borough = request.args.get('borough', '')
-    complaint_type = request.args.get('complaint_type', '')
+        start_date = request.args.get('start_date', '').strip()
+        end_date = request.args.get('end_date', '').strip()
+        borough = request.args.get('borough', '').strip()
+        complaint_type = request.args.get('complaint_type', '').strip()
 
-    query = """
-        SELECT `unique_key`, `borough`, `complaint_type`, `created_date`
-        FROM service_requests
-        WHERE (`created_date` BETWEEN %s AND %s)
-        AND (%s = '' OR `borough` = %s)
-        AND (%s = '' OR `complaint_type` = %s)
-        LIMIT %s OFFSET %s
-    """
-    cursor.execute(query, (start_date, end_date, borough, borough, complaint_type, complaint_type, per_page, offset))
-    rows = cursor.fetchall()
+        if not start_date and not end_date and not borough and not complaint_type:
+            query = """
+                SELECT `unique_key`, `borough`, `complaint_type`, `created_date`
+                FROM service_requests
+                LIMIT %s OFFSET %s;
+            """
+            cursor.execute(query, (per_page, offset))
+            rows = cursor.fetchall()
 
-    count_query = """
-        SELECT COUNT(*) AS total
-        FROM service_requests
-        WHERE (`created_date` BETWEEN %s AND %s)
-        AND (%s = '' OR `borough` = %s)
-        AND (%s = '' OR `complaint_type` = %s)
-    """
-    cursor.execute(count_query, (start_date, end_date, borough, borough, complaint_type, complaint_type))
-    total = cursor.fetchone()['total']
-    total_pages = math.ceil(total / per_page)
+            count_query = "SELECT COUNT(*) AS total FROM service_requests;"
+            cursor.execute(count_query)
+            total = cursor.fetchone()['total']
 
-    connection.close()
+        else:
+            query = """
+                SELECT `unique_key`, `borough`, `complaint_type`, `created_date`
+                FROM service_requests
+                WHERE (%s = '' OR borough = %s)
+                AND (%s = '' OR complaint_type = %s)
+                AND (
+                    (%s = '' AND %s = '') 
+                    OR (created_date BETWEEN %s AND %s)
+                )
+                LIMIT %s OFFSET %s;
+            """
+            cursor.execute(query, (
+                borough, borough,
+                complaint_type, complaint_type,
+                start_date, end_date, start_date, end_date,
+                per_page, offset
+            ))
+            rows = cursor.fetchall()
 
-    return render_template(
-        'search.html',
-        rows=rows,
-        page=page,
-        total_pages=total_pages,
-        start_date=start_date,
-        end_date=end_date,
-        borough=borough,
-        complaint_type=complaint_type
-    )
+            count_query = """
+                SELECT COUNT(*) AS total
+                FROM service_requests
+                WHERE (%s = '' OR borough = %s)
+                AND (%s = '' OR complaint_type = %s)
+                AND (
+                    (%s = '' AND %s = '') 
+                    OR (created_date BETWEEN %s AND %s)
+                );
+            """
+            cursor.execute(count_query, (
+                borough, borough,
+                complaint_type, complaint_type,
+                start_date, end_date, start_date, end_date
+            ))
+            total = cursor.fetchone()['total']
+
+        total_pages = math.ceil(total / per_page) if total else 1
+
+        connection.close()
+
+        return render_template(
+            'search.html',
+            rows=rows,
+            page=page,
+            total_pages=total_pages,
+            start_date=start_date,
+            end_date=end_date,
+            borough=borough,
+            complaint_type=complaint_type
+        )
+
+    except mysql.connector.Error as e:
+        print(f"MySQL error in /search: {e}")
+        return f"<h2>Database Error:</h2><pre>{e}</pre>", 500
+
+    except Exception as e:
+        print(f"Unexpected error in /search: {e}")
+        return f"<h2>Unexpected Error:</h2><pre>{e}</pre>", 500
 
 @app.route("/aggregate")
 def aggregate():
@@ -107,14 +144,14 @@ def aggregate():
     except mysql.connector.Error as e:
         print(f"MySQL error in /aggregate: {e}")
         return f"<h2>Database Error:</h2><pre>{e}</pre>", 500
+
     except Exception as e:
         print(f"Unexpected error in /aggregate: {e}")
         return f"<h2>Unexpected Error:</h2><pre>{e}</pre>", 500
-
 def connect_with_retry(db_config, retries=10, delay=5):
     for i in range(retries):
         try:
-            connection = connect_with_retry(db_config)
+            connection = mysql.connector.connect(**db_config)
             if connection.is_connected():
                 print("Connected to MySQL")
                 return connection
