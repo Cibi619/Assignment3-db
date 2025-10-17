@@ -1,4 +1,5 @@
 import os
+import argparse
 import pandas as pd
 from sqlalchemy import create_engine, text
 import time
@@ -58,22 +59,18 @@ def clean_chunk(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def main():
-    engine = get_engine()
-    csv_path = "/data/311_2023_12.csv"
-    chunksize = 50000
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--csv', type=str, default='data/311_2023_12.csv', help='Path to CSV file')
+    parser.add_argument('--chunksize', type=int, default=2000, help='Batch size for inserts')
+    args = parser.parse_args()
 
-    total_inserted = 0
-    start_time = time.time()
+    csv_path = args.csv
+    chunksize = args.chunksize
+    print(f"Loading CSV from: {csv_path}")
 
+    engine = create_engine("mysql+pymysql://root:root@localhost:3306/nyc311_db")
     for chunk in pd.read_csv(csv_path, chunksize=chunksize, low_memory=False):
-        df = clean_chunk(chunk)
-        if not df.empty:
-            df.to_sql("service_requests", engine, if_exists="append", index=False, method="multi", chunksize=10000)
-            total_inserted += len(df)
-            print(f"Inserted {len(df)} rows (total {total_inserted})")
-
-    elapsed = time.time() - start_time
-    print(f"\nETL complete: Inserted {total_inserted} rows in {elapsed:.2f} seconds")
+        chunk.to_sql(name="service_requests", con=engine, if_exists="append", index=False)
 
 if __name__ == "__main__":
     main()
