@@ -84,7 +84,7 @@ def search():
             ))
             total = cursor.fetchone()['total']
 
-        total_pages = math.ceil(total / per_page) if total else 1
+        total_pages = math.ceil(total / per_page) if total > 0 else 0
 
         connection.close()
 
