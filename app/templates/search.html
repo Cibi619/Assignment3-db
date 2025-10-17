@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NYC311 Complaints</title>
+</head>
+<body>
+    <h1>Complaint Search</h1>
+    <form method="get">
+        Start Date: <input type="date" name="start_date" value="{{ start_date }}">
+        End Date: <input type="date" name="end_date" value="{{ end_date }}">
+        Borough: <input type="text" name="borough" value="{{ borough }}">
+        Complaint Type: <input type="text" name="complaint_type" value="{{ complaint_type }}">
+        <input type="submit" value="Search">
+    </form>
+
+    <h2>Results</h2>
+    <table border="1">
+        <tr>
+            <th>Unique Key</th>
+            <th>Borough</th>
+            <th>Complaint Type</th>
+            <th>Created Date</th>
+            <th>Status</th>
+        </tr>
+        {% for row in rows %}
+        <tr>
+            <td>{{ row.unique_key }}</td>
+            <td>{{ row.borough }}</td>
+            <td>{{ row.complaint_type }}</td>
+            <td>{{ row.created_date }}</td>
+            <td>{{ row.status }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+
+    <div>
+        {% if page > 1 %}
+            <a href="?page={{ page-1 }}&start_date={{ start_date }}&end_date={{ end_date }}&borough={{ borough }}&complaint_type={{ complaint_type }}">Prev</a>
+        {% endif %}
+        Page {{ page }} of {{ total_pages }}
+        {% if page < total_pages %}
+            <a href="?page={{ page+1 }}&start_date={{ start_date }}&end_date={{ end_date }}&borough={{ borough }}&complaint_type={{ complaint_type }}">Next</a>
+        {% endif %}
+    </div>
+
+    <p><a href="/aggregate">View Complaints per Borough</a></p>
+</body>
+</html>

@@ -1,13 +1,31 @@
-CREATE DATABASE IF NOT EXISTS nyc311;
-USE nyc311;
-CREATE TABLE IF NOT EXISTS service_requests (
+CREATE TABLE service_requests (
   unique_key BIGINT PRIMARY KEY,
-  created_date DATETIME NOT NULL,
-  closed_date DATETIME NULL,
-  agency VARCHAR(16),
-  complaint_type VARCHAR(128),
-  descriptor VARCHAR(255),
-  borough VARCHAR(32),
-  latitude DECIMAL(9,6),
-  longitude DECIMAL(9,6)
+  created_date DATETIME,
+  closed_date DATETIME,
+  agency TEXT,
+  agency_name TEXT,
+  complaint_type TEXT,
+  descriptor TEXT,
+  location_type TEXT,
+  incident_zip DOUBLE,
+  incident_address TEXT,
+  street_name TEXT,
+  cross_street_1 TEXT,
+  cross_street_2 TEXT,
+  intersection_street_1 TEXT,
+  intersection_street_2 TEXT,
+  address_type TEXT,
+  city TEXT,
+  landmark TEXT,
+  facility_type TEXT,
+  status TEXT,
+  due_date TEXT,
+  resolution_description TEXT,
+  resolution_action_updated_date TEXT,
+  community_board TEXT,
+  bbl DOUBLE,
+  borough TEXT,
+  latitude DOUBLE,
+  longitude DOUBLE,
+  location TEXT
 );

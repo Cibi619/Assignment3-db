@@ -1,18 +1,40 @@
-version: '3.9'
 services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: nyc311_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   app:
     build: .
+    container_name: prog8850-assignment3-app
     ports:
       - "5000:5000"
     volumes:
-      - .:/app
+      - ./app:/app
+      - ./data:/data
+      - ./etl:/etl
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    working_dir: /app
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: nyc311_db
+      FLASK_APP: main.py
+      FLASK_ENV: development
+    command: flask run --host=0.0.0.0 --port=5000

@@ -1,1 +1,27 @@
-<!-- Aggregate view placeholder -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Complaints per Borough</title>
+</head>
+<body>
+    <h1>Complaints per Borough</h1>
+
+    {% if message %}
+        <p>{{ message }}</p>
+    {% else %}
+        <table border="1" cellpadding="5">
+            <tr>
+                <th>Borough</th>
+                <th>Total Complaints</th>
+            </tr>
+            {% for row in data %}
+            <tr>
+                <td>{{ row['borough'] }}</td>
+                <td>{{ row['total_complaints'] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+</body>
+</html>
