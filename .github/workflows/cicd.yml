@@ -1,9 +1,10 @@
-name: CI Pipeline
+name: build-test
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
   build-test:
@@ -12,13 +13,15 @@ jobs:
     services:
       mysql:
         image: mysql:8.0
-        ports:
-          - 3306:3306
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: nyc311_db
+          MYSQL_USER: user
+          MYSQL_PASSWORD: password
+        ports:
+          - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -proot"
+          --health-cmd="mysqladmin ping -h localhost -uuser -ppassword"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -30,51 +33,36 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install selenium pytest pandas sqlalchemy pymysql mysql-connector-python
+          pip install pytest selenium pymysql sqlalchemy pandas
 
-      - name: Wait for MySQL to start
+      - name: Wait for MySQL
         run: |
-          for i in {1..15}; do
-            if mysqladmin ping -h 127.0.0.1 -proot --silent; then
-              echo "MySQL is ready"
-              break
-            fi
-            echo "Waiting for MySQL..."
-            sleep 5
-          done
-
-      - name: Initialize schema
-        run: |
-          mysql -h 127.0.0.1 -uroot -proot nyc311_db < db/schema.sql
+          echo "Waiting for MySQL to be ready..."
+          sleep 20
 
       - name: Run ETL on small fixture CSV
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: user
+          MYSQL_PASSWORD: password
+          MYSQL_DATABASE: nyc311_db
         run: |
           python etl/etl.py --csv tests/fixtures/311_sample.csv --chunksize 2000
 
       - name: Start Flask app in background
         env:
           MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-          MYSQL_USER: root
-          MYSQL_PASSWORD: root
+          MYSQL_USER: user
+          MYSQL_PASSWORD: password
           MYSQL_DATABASE: nyc311_db
-          FLASK_APP: app/main.py
         run: |
-          nohup python -m flask run --host=0.0.0.0 --port=5000 &
+          nohup python app/main.py &
           sleep 10
 
       - name: Run Selenium tests
-        env:
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-          MYSQL_USER: root
-          MYSQL_PASSWORD: root
-          MYSQL_DATABASE: nyc311_db
-        run: |
-          pytest -q --maxfail=1 --disable-warnings -v
+        run: pytest -q --maxfail=1 --disable-warnings -v
