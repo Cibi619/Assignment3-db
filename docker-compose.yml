@@ -23,7 +23,7 @@ services:
       - "5000:5000"
     volumes:
       - ./app:/app
-      - ./data:/data
+      - ./data:/app/data
       - ./etl:/etl
     depends_on:
       db:
